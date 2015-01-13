@@ -7,7 +7,7 @@ import urllib.request
 import urllib.error
 from html.parser import HTMLParser
 
-
+book_list=[]
 class MyHTMLParser(HTMLParser):
     def clear(self):
         self.book_data = {}
@@ -150,10 +150,12 @@ class DownloadEbooks:
             self._dl_worker(self._saved_list[num])
             self._q.task_done()
 
-    def _dl_worker(self, book):
+    def _dl_worker(self, book, retry_num = 0):
         """
         Download the e-book
         """
+        if retry_num > g_num_retry:
+            return
         if book['inLanguage'].lower() == 'english':
             book['publisher'] = self._sanitize(book['publisher'])
             book['name'] = self._sanitize(book['name'])
@@ -168,6 +170,7 @@ class DownloadEbooks:
                 ext = book['bookFormat'].lower()
                 file_name = book['publisher']+' - '+book['name']+' ('+book['datePublished']+').'+ext
                 new_file = file_dir+file_name
+                book_list.append(new_file)
 
                 dl_file = True
                 if os.path.isfile(new_file):
@@ -182,11 +185,14 @@ class DownloadEbooks:
                                     'Referer': book['url']}
                     dl_success = False
                     while not dl_success:
-                        with urllib.request.urlopen(
-                                urllib.request.Request(book['dl_link'], headers=header_stuff)) as response, \
-                                open(new_file, 'wb') as out_file:
+                        try:
+                            response=urllib.request.urlopen(urllib.request.Request(book['dl_link'], headers=header_stuff))
+                            out_file=open(new_file, 'wb')
                             data = response.read()
                             out_file.write(data)
+                            out_file.close()
+                        except:
+                            return self._dl_worker(book, retry_num + 1)
                         # If file did not fully dl, try again
                         if os.path.getsize(new_file) < 100 * 1024:
                             errors.append("Re-downloaded: ["+str(book['num'])+"] "+book['name'])
@@ -216,10 +222,11 @@ def elapsed_time():
 
 if __name__ == '__main__':
     ########## Edit these
-    g_dl_dir = 'X:/downloads/ebooks/it-ebooks'
-    g_json_save = g_dl_dir+'/it-ebooks.json'
+    g_dl_dir = '~/iteBooks'
+    g_json_save = g_dl_dir+'/itebooks.json'
     g_num_parse_threads = 10
     g_num_dl_threads = 5
+    g_num_retry = 5
     ########## STOP edit
 
     errors = []
@@ -230,3 +237,10 @@ if __name__ == '__main__':
     book_dl = DownloadEbooks(g_json_save)
     for error in errors:
         print(error)
+    print("Total Books with repeat = ",len(book_list))
+    book_list=list(set(book_list))
+    print("Total Books without repeat =",len(book_list))
+    fid = open('booklist.txt','w')
+    booklist = '\n'.join(book_list)
+    fid.write(booklist)
+    fid.close()
