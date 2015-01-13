@@ -8,8 +8,8 @@ import urllib.error
 from html.parser import HTMLParser
 
 book_list=[]
-class MyHTMLParser(HTMLParser):
-    def clear(self):
+class MyHTMLParser( HTMLParser ):
+    def clear( self ):
         self.book_data = {}
         self.item_found = {}
         self.looking_for = {'name': 'h1',
@@ -19,16 +19,16 @@ class MyHTMLParser(HTMLParser):
                             'bookFormat': 'b'
                             }
 
-    def handle_starttag(self, tag, attrs):
+    def handle_starttag( self, tag, attrs ):
         # Find everything we are looking_for
         for item, my_tag in self.looking_for.items():
-            if tag == my_tag and ('itemprop', item) in attrs:
+            if tag == my_tag and ( 'itemprop', item ) in attrs:
                 self.item_found[item] = True
         # Get download link
-        if tag == 'a' and 'href' == attrs[0][0] and attrs[0][1].startswith('http://filepi.com'):
+        if tag == 'a' and 'href' == attrs[0][0] and attrs[0][1].startswith( 'http://filepi.com' ):
             self.book_data['dl_link'] = attrs[0][1]
 
-    def handle_data(self, data):
+    def handle_data( self, data ):
         # Save the data we are looking for
         for item, found in self.item_found.items():
             if found:
@@ -37,7 +37,7 @@ class MyHTMLParser(HTMLParser):
 
 
 class CreateJSON:
-    def __init__(self, book_list):
+    def __init__( self, book_list ):
         self._book_list_file = book_list
         self._output_list = {}
         self._saved_list = {}
@@ -47,31 +47,31 @@ class CreateJSON:
         self._load_list()
 
         self._q = queue.Queue()
-        for i in range(g_num_parse_threads):
-            t = threading.Thread(target=self._parse_start)
+        for i in range( g_num_parse_threads ):
+            t = threading.Thread( target = self._parse_start )
             t.daemon = True
             t.start()
 
         while not self._last_book:
-            end_count = self._curr_count+g_num_parse_threads
-            for item in range(self._curr_count, end_count):
-                self._q.put(item)
+            end_count = self._curr_count + g_num_parse_threads
+            for item in range( self._curr_count, end_count ):
+                self._q.put( item )
             self._curr_count = end_count
 
             self._q.join()
 
-        print("\n")
+        print( "\n" )
         self._save_list()
 
-    def _save_list(self):
-        json_to_save = dict(list(self._output_list.items()) + list(self._saved_list.items()))
+    def _save_list( self ):
+        json_to_save = dict( list( self._output_list.items() ) + list( self._saved_list.items() ) )
         with open(self._book_list_file, 'w') as outfile:
             json.dump(json_to_save, outfile, sort_keys=True,  indent=4)
 
-    def _load_list(self):
+    def _load_list( self ):
         try:
-            with open(self._book_list_file) as data_file:
-                data = json.load(data_file)
+            with open( self._book_list_file ) as data_file:
+                data = json.load( data_file )
         except:
             pass
         else:
@@ -80,22 +80,22 @@ class CreateJSON:
     def _parse_start(self):
         while True:
             num = self._q.get()
-            print("Parsed: "+str(num)+" books\tElapsed Time: " + elapsed_time(), end='\r')
-            self._parse_worker(num)
+            print( "Parsed: " + str( num ) + " books\tElapsed Time: " + elapsed_time(), end ='\r' )
+            self._parse_worker( num )
             self._q.task_done()
 
-    def _parse_worker(self, book_num):
+    def _parse_worker( self, book_num ):
         """
         Parse the page for the book information
         """
-        if str(book_num) not in self._saved_list:  # Do not parse the page if we already have that book data
-            url = "http://it-ebooks.info/book/"+str(book_num)
+        if str( book_num ) not in self._saved_list:  # Do not parse the page if we already have that book data
+            url = "http://it-ebooks.info/book/"+str( book_num )
             try:
-                request = urllib.request.Request(url)
-                response = urllib.request.urlopen(request)
-                html = response.read().decode('utf-8')
+                request = urllib.request.Request( url )
+                response = urllib.request.urlopen( request )
+                html = response.read().decode( 'utf-8' )
             except:
-                errors.append("Error: Book #"+str(book_num))
+                errors.append( "Error: Book #" + str( book_num ) )
             else:
                 # Catch 404 page
                 if html.find('Page Not Found') != -1:
@@ -110,33 +110,33 @@ class CreateJSON:
                     parser.feed(html)
                     parser.book_data['url'] = url
                     parser.book_data['num'] = book_num
-                    self._output_list[int(book_num)] = parser.book_data
+                    self._output_list[int( book_num )] = parser.book_data
 
 
 class DownloadEbooks:
-    def __init__(self, book_list):
+    def __init__( self, book_list ):
         self._book_list_file = book_list
         self._saved_list = {}
         self._load_list()
-        self._num_books = len(self._saved_list)
+        self._num_books = len( self._saved_list )
         self._current_count = 0
 
         self._q = queue.Queue()
-        for i in range(g_num_dl_threads):
-            t = threading.Thread(target=self._dl_start)
+        for i in range( g_num_dl_threads ):
+            t = threading.Thread( target = self._dl_start )
             t.daemon = True
             t.start()
 
         for key in self._saved_list:
-            self._q.put(key)
+            self._q.put( key )
 
         self._q.join()
         print("\n")
 
     def _load_list(self):
         try:
-            with open(self._book_list_file) as data_file:
-                data = json.load(data_file)
+            with open( self._book_list_file ) as data_file:
+                data = json.load( data_file )
         except:
             pass
         else:
@@ -146,39 +146,39 @@ class DownloadEbooks:
         while True:
             num = self._q.get()
             self._current_count += 1
-            print(str(self._current_count)+' out of '+str(self._num_books)+"\tElapsed Time: "+elapsed_time(), end='\r')
-            self._dl_worker(self._saved_list[num])
+            print( str( self._current_count ) + ' out of ' + str( self._num_books ) + "\tElapsed Time: " + elapsed_time(), end='\r')
+            self._dl_worker( self._saved_list[num] )
             self._q.task_done()
 
-    def _dl_worker(self, book, retry_num = 0):
+    def _dl_worker( self, book, retry_num = 0 ):
         """
         Download the e-book
         """
         if retry_num > g_num_retry:
             return
         if book['inLanguage'].lower() == 'english':
-            book['publisher'] = self._sanitize(book['publisher'])
-            book['name'] = self._sanitize(book['name'])
-            file_dir = g_dl_dir+'/'+book['publisher']+'/'
+            book['publisher'] = self._sanitize( book['publisher'] )
+            book['name'] = self._sanitize( book['name'] )
+            file_dir = g_dl_dir + '/' + book['publisher'] + '/'
             try:
-                os.makedirs(file_dir)
+                os.makedirs( file_dir )
             except:
                 pass
             finally:
                 if book['bookFormat'] is None:
                     book['bookFormat'] = 'pdf'
                 ext = book['bookFormat'].lower()
-                file_name = book['publisher']+' - '+book['name']+' ('+book['datePublished']+').'+ext
-                new_file = file_dir+file_name
-                book_list.append(new_file)
+                file_name = book['publisher'] + ' - ' + book['name']+' ('+book['datePublished'] + ').' + ext
+                new_file = file_dir + file_name
+                book_list.append( new_file )
 
                 dl_file = True
-                if os.path.isfile(new_file):
+                if os.path.isfile( new_file ):
                     dl_file = False
                     # If file exists, but is under 100kb, then re-download
-                    if os.path.getsize(new_file) < 100 * 1024:
+                    if os.path.getsize( new_file ) < 100 * 1024:
                         dl_file = True
-                        os.remove(new_file)
+                        os.remove( new_file )
 
                 if dl_file:
                     header_stuff = {'User-Agent': 'Mozilla/4.0 (compatible; MSIE 5.5; Windows NT)',
@@ -186,22 +186,22 @@ class DownloadEbooks:
                     dl_success = False
                     while not dl_success:
                         try:
-                            response=urllib.request.urlopen(urllib.request.Request(book['dl_link'], headers=header_stuff))
-                            out_file=open(new_file, 'wb')
+                            response=urllib.request.urlopen( urllib.request.Request( book['dl_link'], headers = header_stuff ) )
+                            out_file=open( new_file, 'wb')
                             data = response.read()
-                            out_file.write(data)
+                            out_file.write( data )
                             out_file.close()
                         except:
-                            return self._dl_worker(book, retry_num + 1)
+                            return self._dl_worker( book, retry_num + 1 )
                         # If file did not fully dl, try again
-                        if os.path.getsize(new_file) < 100 * 1024:
-                            errors.append("Re-downloaded: ["+str(book['num'])+"] "+book['name'])
+                        if os.path.getsize( new_file ) < 100 * 1024:
+                            errors.append( "Re-downloaded: [" + str( book['num'] ) + "] " + book['name'] )
                             dl_success = False
-                            os.remove(new_file)
+                            os.remove( new_file )
                         else:
                             dl_success = True
         else:
-            errors.append("Book: ["+str(book['num'])+"] "+book['name']+" is not in english")
+            errors.append( "Book: ["+str( book['num'] ) + "] " + book['name'] + " is not in english" )
 
     def _sanitize(self, string):
         """
@@ -213,12 +213,12 @@ class DownloadEbooks:
             ['|', '-'],  ['*', '`'], ['"', '\'']
         ]
         for ch in replace_chars:
-            string = string.replace(ch[0], ch[1])
+            string = string.replace( ch[0], ch[1] )
         return string
 
 
 def elapsed_time():
-    return str(datetime.datetime.now().replace(microsecond=0) - start_time)
+    return str( datetime.datetime.now().replace( microsecond=0 ) - start_time )
 
 if __name__ == '__main__':
     ########## Edit these
@@ -230,17 +230,16 @@ if __name__ == '__main__':
     ########## STOP edit
 
     errors = []
-    start_time = datetime.datetime.now().replace(microsecond=0)
+    start_time = datetime.datetime.now().replace( microsecond=0 )
     # Create json file by parsing the site
-    book_parse = CreateJSON(g_json_save)
+    book_parse = CreateJSON( g_json_save )
     # Download ebooks that were parsed
-    book_dl = DownloadEbooks(g_json_save)
+    book_dl = DownloadEbooks( g_json_save )
     for error in errors:
-        print(error)
-    print("Total Books with repeat = ",len(book_list))
-    book_list=list(set(book_list))
-    print("Total Books without repeat =",len(book_list))
-    fid = open('booklist.txt','w')
-    booklist = '\n'.join(book_list)
-    fid.write(booklist)
-    fid.close()
+        print( error )
+    print( "Total Books with duplicates = ", len( book_list ) )
+    book_list = list( set( book_list ) )
+    print( "Total Books without duplicates =",len( book_list ))
+    booklist = '\n'.join( book_list )
+    with open( g_dl_dir + "/booklist.txt" ) as fid:
+        fid.write( booklist )
