@@ -43,6 +43,7 @@ class CreateJSON:
         self._saved_list = {}
         self._curr_count = 1
         self._last_book = False
+        self._max_books = 5690
         self._error404_group = 0  # Num of 404's in together
         self._load_list()
 
@@ -80,7 +81,7 @@ class CreateJSON:
     def _parse_start(self):
         while True:
             num = self._q.get()
-            print( "Parsed: " + str( num ) + " books\tElapsed Time: " + elapsed_time(), end ='\r' )
+            print( "Parsed: " + str( num ) + " books    Elapsed Time: " + elapsed_time(), end ='\r' )
             self._parse_worker( num )
             self._q.task_done()
 
@@ -100,7 +101,7 @@ class CreateJSON:
                 # Catch 404 page
                 if html.find('Page Not Found') != -1:
                     self._error404_group += 1
-                    if self._error404_group > 10:  # If we hid 10 404 pages in a row we know we reached the end
+                    if self._error404_group > 10 and book_num > self._max_books:  # If we hid 10 404 pages in a row we know we reached the end
                         self._last_book = True
                 else:
                     self._error404_group = 0
@@ -110,7 +111,7 @@ class CreateJSON:
                     parser.feed(html)
                     parser.book_data['url'] = url
                     parser.book_data['num'] = book_num
-                    self._output_list[int( book_num )] = parser.book_data
+                    self._output_list[str( book_num )] = parser.book_data
 
 
 class DownloadEbooks:
@@ -146,7 +147,7 @@ class DownloadEbooks:
         while True:
             num = self._q.get()
             self._current_count += 1
-            print( str( self._current_count ) + ' out of ' + str( self._num_books ) + "\tElapsed Time: " + elapsed_time(), end='\r')
+            print( str( self._current_count ) + ' out of ' + str( self._num_books ) + "    Elapsed Time: " + elapsed_time(), end='\r')
             self._dl_worker( self._saved_list[num] )
             self._q.task_done()
 
@@ -222,8 +223,8 @@ def elapsed_time():
 
 if __name__ == '__main__':
     ########## Edit these
-    g_dl_dir = '~/iteBooks'
-    g_json_save = g_dl_dir+'/itebooks.json'
+    g_dl_dir = os.environ['HOME'] + '/itebooks'
+    g_json_save = g_dl_dir + '/itebooks.json'
     g_num_parse_threads = 10
     g_num_dl_threads = 5
     g_num_retry = 5
@@ -241,5 +242,5 @@ if __name__ == '__main__':
     book_list = list( set( book_list ) )
     print( "Total Books without duplicates =",len( book_list ))
     booklist = '\n'.join( book_list )
-    with open( g_dl_dir + "/booklist.txt" ) as fid:
+    with open( g_dl_dir + "/booklist.txt" ,'w') as fid:
         fid.write( booklist )

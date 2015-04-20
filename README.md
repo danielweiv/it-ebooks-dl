@@ -17,7 +17,7 @@ Vars
   * `g_json_save` - File to save the parsed json data to
   * `g_num_parse_threads` - Number of threads for the parser to use
   * `g_num_dl_threads` - Number of threads for the downloader to use
-
+  * `g_num_retry' - Number of retries when failded to download the book
 
 Use
 ---
