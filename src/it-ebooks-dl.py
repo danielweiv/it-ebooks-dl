@@ -5,7 +5,11 @@ import threading
 import queue
 import urllib.request
 import urllib.error
+import socket
 from html.parser import HTMLParser
+
+default_timeout = 60
+socket.setdefaulttimeout(default_timeout)
 
 book_list=[]
 class MyHTMLParser( HTMLParser ):
@@ -192,6 +196,8 @@ class DownloadEbooks:
                             data = response.read()
                             out_file.write( data )
                             out_file.close()
+                            #obj = SmartDL(url = book['dl_link'], dest = new_file, progress_bar = False)
+                            #obj.start()
                         except:
                             return self._dl_worker( book, retry_num + 1 )
                         # If file did not fully dl, try again
@@ -226,14 +232,14 @@ if __name__ == '__main__':
     g_dl_dir = os.environ['HOME'] + '/itebooks'
     g_json_save = g_dl_dir + '/itebooks.json'
     g_num_parse_threads = 10
-    g_num_dl_threads = 5
-    g_num_retry = 5
+    g_num_dl_threads = 6
+    g_num_retry = 35
     ########## STOP edit
 
     errors = []
     start_time = datetime.datetime.now().replace( microsecond=0 )
     # Create json file by parsing the site
-    book_parse = CreateJSON( g_json_save )
+    #book_parse = CreateJSON( g_json_save )
     # Download ebooks that were parsed
     book_dl = DownloadEbooks( g_json_save )
     for error in errors:
